@@ -1,4 +1,5 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
@@ -18,3 +19,54 @@ If you are developing a production application, we recommend using TypeScript wi
 =======
 # taskify-react-spa
 >>>>>>> 14aae9c0dbe1b7e9359d84a363624d0473483150
+=======
+# Taskify React SPA
+
+A modern Single Page Application (SPA) built using ReactJS.
+
+## Features
+
+- Add tasks
+- Delete tasks
+- Task categories (Study, Work, Personal, Health)
+- Priority levels (High, Medium, Low)
+- Search tasks
+- Progress tracking
+- Dark mode support
+- Responsive sidebar layout
+- Floating particle background
+- Animated UI
+
+## Technologies Used
+
+- ReactJS
+- Vite
+- JavaScript (ES6)
+- CSS3
+- React Icons
+- Local Storage
+
+## How to Run
+
+1. Install dependencies:
+   npm install
+
+2. Start project:
+   npm run dev
+
+3. Open browser:
+   http://localhost:5173/
+
+
+## Project Type
+
+Single Page Application (SPA)
+
+## Author
+
+Jigyasa Khamele
+
+   
+
+1. Install dependencies:
+>>>>>>> ef1b4aabe96d7754f4e6049dd57583d08b9aca4f
