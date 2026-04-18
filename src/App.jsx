@@ -1,45 +1,65 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { PieChart, Pie, Cell, Tooltip } from "recharts";
 
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis
-} from "recharts";
+/* ===================== VIEWS ===================== */
+
+const Dashboard = ({ tasks }) => {
+  const completed = tasks.filter(t => t.completed).length;
+  const pending = tasks.length - completed;
+
+  return (
+    <div className="dashboard">
+      <h2>📊 Dashboard</h2>
+
+      <div className="stats">
+        <div>Total: {tasks.length}</div>
+        <div>Done: {completed}</div>
+        <div>Pending: {pending}</div>
+      </div>
+    </div>
+  );
+};
+
+const Calendar = ({ tasks }) => {
+  return (
+    <div className="calendar">
+      <h2>🗓 Calendar</h2>
+
+      {tasks.length === 0 ? (
+        <p className="empty">No scheduled tasks</p>
+      ) : (
+        tasks.map(t => (
+          <div key={t.id} className="calendar-item">
+            📅 {t.dueDate || "No date"} — {t.text}
+          </div>
+        ))
+      )}
+    </div>
+  );
+};
+
+/* ===================== MAIN APP ===================== */
 
 function App() {
-  // ===== STATE =====
   const [tasks, setTasks] = useState(
     JSON.parse(localStorage.getItem("tasks")) || []
   );
 
   const [input, setInput] = useState("");
   const [category, setCategory] = useState("General");
-  const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const [view, setView] = useState("list");
   const [dueDate, setDueDate] = useState("");
+  const [view, setView] = useState("dashboard");
+  const [dark, setDark] = useState(true);
 
-  // ===== PRIORITY =====
-  const getSmartPriority = (text) => {
-    const t = text.toLowerCase();
-    if (t.includes("exam")) return "high";
-    if (t.includes("project")) return "medium";
-    return "low";
-  };
-
-  // ===== SAVE =====
+  /* SAVE LOCAL STORAGE */
   useEffect(() => {
     localStorage.setItem("tasks", JSON.stringify(tasks));
   }, [tasks]);
 
-  // ===== ADD TASK =====
+  /* ADD TASK */
   const addTask = () => {
     if (!input.trim()) return;
 
@@ -49,10 +69,8 @@ function App() {
         id: Date.now(),
         text: input,
         completed: false,
-        priority: getSmartPriority(input),
         category,
-        dueDate,
-        notified: false
+        dueDate
       }
     ]);
 
@@ -60,21 +78,21 @@ function App() {
     setDueDate("");
   };
 
-  // ===== TOGGLE =====
+  /* TOGGLE */
   const toggleTask = (id) => {
     setTasks(
-      tasks.map((t) =>
+      tasks.map(t =>
         t.id === id ? { ...t, completed: !t.completed } : t
       )
     );
   };
 
-  // ===== DELETE =====
+  /* DELETE */
   const deleteTask = (id) => {
-    setTasks(tasks.filter((t) => t.id !== id));
+    setTasks(tasks.filter(t => t.id !== id));
   };
 
-  // ===== DRAG =====
+  /* DRAG */
   const handleDragEnd = (result) => {
     if (!result.destination) return;
 
@@ -85,194 +103,189 @@ function App() {
     setTasks(items);
   };
 
-  // ===== FILTER =====
-  const filteredTasks = tasks
-    .filter((t) => {
-      if (filter === "active") return !t.completed;
-      if (filter === "completed") return t.completed;
-      return true;
-    })
-    .filter((t) => t.text.toLowerCase().includes(search.toLowerCase()));
+  /* FILTER */
+  const filteredTasks = tasks.filter(t =>
+    t.text.toLowerCase().includes(search.toLowerCase())
+  );
 
-  // ===== PROGRESS =====
-  const progress =
-    tasks.length === 0
-      ? 0
-      : Math.round(
-          (tasks.filter((t) => t.completed).length / tasks.length) * 100
-        );
+  const completed = tasks.filter(t => t.completed).length;
+  const pending = tasks.length - completed;
 
-  // ===== ANALYTICS FIX =====
-  const weekly = [0, 0, 0, 0, 0, 0, 0];
-
-  tasks.forEach((task) => {
-    if (task.completed && task.dueDate) {
-      const day = new Date(task.dueDate).getDay();
-      weekly[day]++;
-    }
-  });
-
-  const lineData = weekly.map((v, i) => ({
-    day: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][i],
-    tasks: v
-  }));
-
-  // ===== PIE =====
   const pieData = [
-    { name: "Done", value: tasks.filter((t) => t.completed).length },
-    { name: "Left", value: tasks.filter((t) => !t.completed).length }
+    { name: "Done", value: completed },
+    { name: "Left", value: pending }
   ];
 
   const COLORS = ["#10b981", "#ef4444"];
 
-  // ===== NOTIFICATIONS FIX =====
-  useEffect(() => {
-    if (!("Notification" in window)) return;
-
-    Notification.requestPermission();
-
-    const interval = setInterval(() => {
-      const today = new Date().toDateString();
-
-      setTasks((prev) =>
-        prev.map((task) => {
-          if (
-            task.dueDate &&
-            !task.completed &&
-            !task.notified &&
-            new Date(task.dueDate).toDateString() === today
-          ) {
-            new Notification("🔔 Task Reminder", {
-              body: `Due Today: ${task.text}`
-            });
-
-            return { ...task, notified: true };
-          }
-          return task;
-        })
-      );
-    }, 60000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // ===== UI =====
   return (
-    <div className="card">
-      <h1>⚡ Taskify Pro</h1>
+    <div className={`app ${dark ? "dark" : "light"}`}>
 
-      {/* INPUT */}
-      <div className="input-row">
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="New Task..."
-        />
-        <button className="add-btn" onClick={addTask}>
-          + Add
-        </button>
-      </div>
+      {/* ================= SIDEBAR ================= */}
+    <div className="sidebar">
+  <h2> Taskify </h2>
 
-      {/* CONTROLS */}
-      <div className="controls">
-        <select onChange={(e) => setCategory(e.target.value)}>
-          <option>General</option>
-          <option>Study</option>
-          <option>Work</option>
-        </select>
+  {/* NAV ITEMS */}
+  <button
+    className={`nav-btn ${view === "dashboard" ? "active" : ""}`}
+    onClick={() => setView("dashboard")}
+  >
+    📊 Dashboard
+  </button>
 
-        <input
-          type="date"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-        />
-      </div>
+  <button
+    className={`nav-btn ${view === "calendar" ? "active" : ""}`}
+    onClick={() => setView("calendar")}
+  >
+    🗓 Calendar
+  </button>
 
-      {/* SEARCH */}
-      <input
-        className="search"
-        placeholder="Search tasks..."
-        onChange={(e) => setSearch(e.target.value)}
-      />
+  {/* THEME TOGGLE (NOW SAME STYLE AS NAV) */}
+  <button
+    className="nav-btn theme-toggle"
+    onClick={() => setDark(!dark)}
+  >
+    {dark ? "🌙 Dark Mode" : "☀ Light Mode"}
+  </button>
+</div>
 
-      {/* PROGRESS */}
-      <div className="progress-bar">
-        <div className="fill" style={{ width: `${progress}%` }} />
-      </div>
+      {/* ================= MAIN ================= */}
+      <div className="main">
 
-      {/* ANALYTICS */}
-      <div className="analytics">
-        <h3>📊 Dashboard</h3>
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={view}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.25 }}
+          >
 
-        <div className="stats-grid">
-          <div className="stat-box">
-            Total: {tasks.length}
-          </div>
-          <div className="stat-box">
-            Done: {tasks.filter((t) => t.completed).length}
-          </div>
-          <div className="stat-box">
-            Pending: {tasks.filter((t) => !t.completed).length}
-          </div>
-          <div className="stat-box">
-            {progress}% Complete
-          </div>
-        </div>
-      </div>
+            {/* ================= DASHBOARD ================= */}
+            {view === "dashboard" && (
+              <>
+                <Dashboard tasks={tasks} />
 
-      {/* CHARTS */}
-      <LineChart width={300} height={200} data={lineData}>
-        <XAxis dataKey="day" />
-        <YAxis />
-        <Tooltip />
-        <Line type="monotone" dataKey="tasks" stroke="#8b5cf6" />
-      </LineChart>
+                {/* ================= TASK FORM ================= */}
+                <div className="task-form-wrapper">
 
-      <PieChart width={250} height={200}>
-        <Pie data={pieData} dataKey="value" outerRadius={70}>
-          {pieData.map((_, i) => (
-            <Cell key={i} fill={COLORS[i]} />
-          ))}
-        </Pie>
-        <Tooltip />
-      </PieChart>
+                  <div className="task-form-card">
+                    <div className="form-title">Add New Task</div>
 
-      {/* LIST */}
-      <DragDropContext onDragEnd={handleDragEnd}>
-        <Droppable droppableId="tasks">
-          {(provided) => (
-            <div ref={provided.innerRef} {...provided.droppableProps}>
-              <AnimatePresence>
-                {filteredTasks.map((task, index) => (
-                  <Draggable
-                    key={task.id}
-                    draggableId={task.id.toString()}
-                    index={index}
-                  >
-                    {(provided) => (
-                      <motion.div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                        className={`task-item ${task.priority}`}
+                    <input
+                      className="input primary-input"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      placeholder="What do you want to achieve?"
+                    />
+
+                    <div className="form-grid">
+                      <select
+                        className="input"
+                        onChange={(e) => setCategory(e.target.value)}
                       >
-                        <span onClick={() => toggleTask(task.id)}>
-                          {task.text}
-                        </span>
+                        <option>General</option>
+                        <option>Study</option>
+                        <option>Work</option>
+                      </select>
 
-                        <button onClick={() => deleteTask(task.id)}>
-                          ❌
-                        </button>
-                      </motion.div>
-                    )}
-                  </Draggable>
-                ))}
-              </AnimatePresence>
-              {provided.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
+                      <input
+                        className="input"
+                        type="date"
+                        value={dueDate}
+                        onChange={(e) => setDueDate(e.target.value)}
+                      />
+                    </div>
+
+                    <button className="add-btn" onClick={addTask}>
+                      + Add Task
+                    </button>
+                  </div>
+
+                  {/* ================= SEARCH ================= */}
+                  <div className="search-card">
+                    <div className="form-title small">Search Tasks</div>
+
+                    <input
+                      className="input search-input"
+                      placeholder="Search tasks, category, keyword..."
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </div>
+
+                </div>
+
+                {/* ================= PIE CHART ================= */}
+                <PieChart width={220} height={180}>
+                  <Pie data={pieData} dataKey="value" outerRadius={60}>
+                    {pieData.map((_, i) => (
+                      <Cell key={i} fill={COLORS[i]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+
+                {/* ================= TASK LIST ================= */}
+                {filteredTasks.length === 0 ? (
+                  <div className="empty">
+                    <h3>No tasks yet 🚀</h3>
+                    <p>Create your first task above</p>
+                  </div>
+                ) : (
+                  <DragDropContext onDragEnd={handleDragEnd}>
+                    <Droppable droppableId="tasks">
+                      {(provided) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className="task-container"
+                        >
+                          {filteredTasks.map((task, index) => (
+                            <Draggable
+                              key={task.id}
+                              draggableId={task.id.toString()}
+                              index={index}
+                            >
+                              {(provided) => (
+                                <motion.div
+                                  layout
+                                  ref={provided.innerRef}
+                                  {...provided.draggableProps}
+                                  {...provided.dragHandleProps}
+                                  className="task-item"
+                                >
+                                  <span>
+                                    <b>{task.category}</b> — {task.text}
+                                  </span>
+
+                                  <div>
+                                    <button onClick={() => toggleTask(task.id)}>
+                                      ✔
+                                    </button>
+                                    <button onClick={() => deleteTask(task.id)}>
+                                      ❌
+                                    </button>
+                                  </div>
+                                </motion.div>
+                              )}
+                            </Draggable>
+                          ))}
+                          {provided.placeholder}
+                        </div>
+                      )}
+                    </Droppable>
+                  </DragDropContext>
+                )}
+              </>
+            )}
+
+            {/* ================= CALENDAR ================= */}
+            {view === "calendar" && <Calendar tasks={tasks} />}
+
+          </motion.div>
+        </AnimatePresence>
+
+      </div>
     </div>
   );
 }
