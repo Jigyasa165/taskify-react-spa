@@ -1,511 +1,279 @@
-import { useState, useEffect } from "react";
-import "./App.css";
-
-/* ICON IMPORTS */
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
 
 import {
-  FaPlus,
-  FaTrash,
-  FaMoon,
-  FaSun,
-  FaSearch,
-  FaBook,
-  FaBriefcase,
-  FaUser,
-  FaHeartbeat,
-  FaBars,
-  FaClipboardList
-} from "react-icons/fa";
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis
+} from "recharts";
 
 function App() {
+  // ===== STATE =====
+  const [tasks, setTasks] = useState(
+    JSON.parse(localStorage.getItem("tasks")) || []
+  );
 
-  // STATES
-  const [tasks, setTasks] = useState([]);
   const [input, setInput] = useState("");
-  const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("study");
-  const [date, setDate] = useState("");
-  const [priority, setPriority] = useState("medium");
-  const [darkMode, setDarkMode] = useState(false);
+  const [category, setCategory] = useState("General");
   const [filter, setFilter] = useState("all");
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [view, setView] = useState("list");
+  const [dueDate, setDueDate] = useState("");
 
-  // LOAD TASKS
+  // ===== PRIORITY =====
+  const getSmartPriority = (text) => {
+    const t = text.toLowerCase();
+    if (t.includes("exam")) return "high";
+    if (t.includes("project")) return "medium";
+    return "low";
+  };
+
+  // ===== SAVE =====
   useEffect(() => {
-
-    const savedTasks =
-      JSON.parse(localStorage.getItem("tasks")) || [];
-
-    setTasks(savedTasks);
-
-  }, []);
-
-  // SAVE TASKS
-  useEffect(() => {
-
-    localStorage.setItem(
-      "tasks",
-      JSON.stringify(tasks)
-    );
-
+    localStorage.setItem("tasks", JSON.stringify(tasks));
   }, [tasks]);
 
-  // DARK MODE
-  useEffect(() => {
-
-    if (darkMode) {
-      document.body.classList.add("dark");
-    } else {
-      document.body.classList.remove("dark");
-    }
-
-  }, [darkMode]);
-
-  // ADD TASK
+  // ===== ADD TASK =====
   const addTask = () => {
+    if (!input.trim()) return;
 
-    if (input.trim() === "") return;
-
-    const newTask = {
-      text: input,
-      category: category,
-      date: date,
-      priority: priority,
-      completed: false
-    };
-
-    setTasks([...tasks, newTask]);
+    setTasks([
+      ...tasks,
+      {
+        id: Date.now(),
+        text: input,
+        completed: false,
+        priority: getSmartPriority(input),
+        category,
+        dueDate,
+        notified: false
+      }
+    ]);
 
     setInput("");
-    setDate("");
-    setPriority("medium");
+    setDueDate("");
   };
 
-  // TOGGLE COMPLETE
-  const toggleTask = (index) => {
-
-    const updated = [...tasks];
-
-    updated[index].completed =
-      !updated[index].completed;
-
-    setTasks(updated);
+  // ===== TOGGLE =====
+  const toggleTask = (id) => {
+    setTasks(
+      tasks.map((t) =>
+        t.id === id ? { ...t, completed: !t.completed } : t
+      )
+    );
   };
 
-  // DELETE TASK
-  const deleteTask = (index) => {
+  // ===== DELETE =====
+  const deleteTask = (id) => {
+    setTasks(tasks.filter((t) => t.id !== id));
+  };
 
-  const taskElements =
-    document.querySelectorAll(".task-item");
+  // ===== DRAG =====
+  const handleDragEnd = (result) => {
+    if (!result.destination) return;
 
-  taskElements[index].classList.add("removing");
+    const items = Array.from(tasks);
+    const [moved] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, moved);
 
-  setTimeout(() => {
+    setTasks(items);
+  };
 
-    const updated =
-      tasks.filter((_, i) => i !== index);
+  // ===== FILTER =====
+  const filteredTasks = tasks
+    .filter((t) => {
+      if (filter === "active") return !t.completed;
+      if (filter === "completed") return t.completed;
+      return true;
+    })
+    .filter((t) => t.text.toLowerCase().includes(search.toLowerCase()));
 
-    setTasks(updated);
-
-  }, 300);
-
-};
-
-  // PROGRESS
-  const completed =
-    tasks.filter(t => t.completed).length;
-
+  // ===== PROGRESS =====
   const progress =
     tasks.length === 0
       ? 0
-      : (completed / tasks.length) * 100;
+      : Math.round(
+          (tasks.filter((t) => t.completed).length / tasks.length) * 100
+        );
 
+  // ===== ANALYTICS FIX =====
+  const weekly = [0, 0, 0, 0, 0, 0, 0];
+
+  tasks.forEach((task) => {
+    if (task.completed && task.dueDate) {
+      const day = new Date(task.dueDate).getDay();
+      weekly[day]++;
+    }
+  });
+
+  const lineData = weekly.map((v, i) => ({
+    day: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][i],
+    tasks: v
+  }));
+
+  // ===== PIE =====
+  const pieData = [
+    { name: "Done", value: tasks.filter((t) => t.completed).length },
+    { name: "Left", value: tasks.filter((t) => !t.completed).length }
+  ];
+
+  const COLORS = ["#10b981", "#ef4444"];
+
+  // ===== NOTIFICATIONS FIX =====
+  useEffect(() => {
+    if (!("Notification" in window)) return;
+
+    Notification.requestPermission();
+
+    const interval = setInterval(() => {
+      const today = new Date().toDateString();
+
+      setTasks((prev) =>
+        prev.map((task) => {
+          if (
+            task.dueDate &&
+            !task.completed &&
+            !task.notified &&
+            new Date(task.dueDate).toDateString() === today
+          ) {
+            new Notification("🔔 Task Reminder", {
+              body: `Due Today: ${task.text}`
+            });
+
+            return { ...task, notified: true };
+          }
+          return task;
+        })
+      );
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // ===== UI =====
   return (
+    <div className="card">
+      <h1>⚡ Taskify Pro</h1>
 
-    <div className="background-wrapper">
-
-      {/* PARTICLES */}
-
-      <div className="particles">
-
-        <span></span>
-        <span></span>
-        <span></span>
-        <span></span>
-        <span></span>
-        <span></span>
-        <span></span>
-        <span></span>
-
+      {/* INPUT */}
+      <div className="input-row">
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="New Task..."
+        />
+        <button className="add-btn" onClick={addTask}>
+          + Add
+        </button>
       </div>
 
-      {/* LAYOUT */}
+      {/* CONTROLS */}
+      <div className="controls">
+        <select onChange={(e) => setCategory(e.target.value)}>
+          <option>General</option>
+          <option>Study</option>
+          <option>Work</option>
+        </select>
 
-      <div className="layout">
+        <input
+          type="date"
+          value={dueDate}
+          onChange={(e) => setDueDate(e.target.value)}
+        />
+      </div>
 
-        {/* SIDEBAR */}
+      {/* SEARCH */}
+      <input
+        className="search"
+        placeholder="Search tasks..."
+        onChange={(e) => setSearch(e.target.value)}
+      />
 
-        <div className={`sidebar ${
-          sidebarOpen ? "open" : ""
-        }`}>
+      {/* PROGRESS */}
+      <div className="progress-bar">
+        <div className="fill" style={{ width: `${progress}%` }} />
+      </div>
 
-          <h2 className="sidebar-title">
-            Taskify
-          </h2>
+      {/* ANALYTICS */}
+      <div className="analytics">
+        <h3>📊 Dashboard</h3>
 
-          <button
-            className={`side-btn ${
-              filter === "all" ? "active" : ""
-            }`}
-            onClick={() =>
-              setFilter("all")
-            }
-          >
-            <FaClipboardList /> All Tasks
-          </button>
-
-          <button
-            className={`side-btn ${
-              filter === "study" ? "active" : ""
-            }`}
-            onClick={() =>
-              setFilter("study")
-            }
-          >
-            <FaBook /> Study
-          </button>
-
-          <button
-            className={`side-btn ${
-              filter === "work" ? "active" : ""
-            }`}
-            onClick={() =>
-              setFilter("work")
-            }
-          >
-            <FaBriefcase /> Work
-          </button>
-
-          <button
-            className={`side-btn ${
-              filter === "personal" ? "active" : ""
-            }`}
-            onClick={() =>
-              setFilter("personal")
-            }
-          >
-            <FaUser /> Personal
-          </button>
-
-          <button
-            className={`side-btn ${
-              filter === "health" ? "active" : ""
-            }`}
-            onClick={() =>
-              setFilter("health")
-            }
-          >
-            <FaHeartbeat /> Health
-          </button>
-
+        <div className="stats-grid">
+          <div className="stat-box">
+            Total: {tasks.length}
+          </div>
+          <div className="stat-box">
+            Done: {tasks.filter((t) => t.completed).length}
+          </div>
+          <div className="stat-box">
+            Pending: {tasks.filter((t) => !t.completed).length}
+          </div>
+          <div className="stat-box">
+            {progress}% Complete
+          </div>
         </div>
-
-        {/* OVERLAY */}
-
-        {sidebarOpen && (
-
-          <div
-            className="overlay"
-            onClick={() =>
-              setSidebarOpen(false)
-            }
-          />
-
-        )}
-
-        {/* MAIN CONTENT */}
-
-        <div className="app-container">
-
-          {/* HEADER */}
-
-          <div className="header-box">
-
-            <div className="header-row">
-
-              {/* MOBILE MENU BUTTON */}
-
-              <button
-                className="menu-btn"
-                onClick={() =>
-                  setSidebarOpen(!sidebarOpen)
-                }
-              >
-                <FaBars />
-              </button>
-
-              <div>
-
-                <h1>Taskify</h1>
-
-                <p className="subtitle">
-                  Stay organized. Stay productive.
-                </p>
-
-              </div>
-
-              <button
-                className="dark-toggle"
-                onClick={() =>
-                  setDarkMode(!darkMode)
-                }
-              >
-                {darkMode
-                  ? <FaSun />
-                  : <FaMoon />}
-              </button>
-
-            </div>
-
-          </div>
-
-          {/* PROGRESS */}
-
-          <div className="progress-box">
-
-            <p>
-              Progress: {progress.toFixed(0)}%
-            </p>
-
-            <div className="progress-bar">
-
-              <div
-                className="progress-fill"
-                style={{
-                  width: `${progress}%`
-                }}
-              />
-
-            </div>
-
-          </div>
-
-          {/* INPUT SECTION */}
-
-          <div className="input-section">
-
-            <select
-              className="task-select"
-              value={category}
-              onChange={(e) =>
-                setCategory(e.target.value)
-              }
-            >
-
-              <option value="study">
-                Study
-              </option>
-
-              <option value="work">
-                Work
-              </option>
-
-              <option value="personal">
-                Personal
-              </option>
-
-              <option value="health">
-                Health
-              </option>
-
-            </select>
-
-            <input
-              type="text"
-              className="task-input"
-              placeholder="Enter task..."
-              value={input}
-              onChange={(e) =>
-                setInput(e.target.value)
-              }
-            />
-
-            <select
-              className="task-select"
-              value={priority}
-              onChange={(e) =>
-                setPriority(e.target.value)
-              }
-            >
-
-              <option value="high">
-                High
-              </option>
-
-              <option value="medium">
-                Medium
-              </option>
-
-              <option value="low">
-                Low
-              </option>
-
-            </select>
-
-            <input
-              type="date"
-              className="task-input"
-              value={date}
-              onChange={(e) =>
-                setDate(e.target.value)
-              }
-            />
-
-            <button
-              className="btn"
-              onClick={addTask}
-            >
-              <FaPlus /> Add
-            </button>
-
-          </div>
-
-          {/* SEARCH */}
-
-          <div className="search-box">
-
-            <FaSearch className="search-icon" />
-
-            <input
-              type="text"
-              className="task-input search-input"
-              placeholder="Search tasks..."
-              value={search}
-              onChange={(e) =>
-                setSearch(e.target.value)
-              }
-            />
-
-          </div>
-
-          {/* TASK LIST */}
-
-          <ul className="task-list">
-
-            {tasks.length === 0 ? (
-
-              <p className="empty">
-                No tasks yet. Add your first task!
-              </p>
-
-            ) : (
-
-              tasks
-
-                .sort((a, b) => {
-
-                  const order = {
-                    high: 1,
-                    medium: 2,
-                    low: 3
-                  };
-
-                  return order[a.priority]
-                    - order[b.priority];
-
-                })
-
-                .filter(task => {
-
-                  const matchesSearch =
-                    task.text
-                      .toLowerCase()
-                      .includes(
-                        search.toLowerCase()
-                      );
-
-                  const matchesFilter =
-                    filter === "all" ||
-                    task.category === filter;
-
-                  return matchesSearch &&
-                         matchesFilter;
-
-                })
-
-                .map((task, index) => (
-
-                  <li
-                    key={index}
-                    className={
-                      `task-item ${
-                        task.completed
-                          ? "completed"
-                          : ""
-                      }`
-                    }
+      </div>
+
+      {/* CHARTS */}
+      <LineChart width={300} height={200} data={lineData}>
+        <XAxis dataKey="day" />
+        <YAxis />
+        <Tooltip />
+        <Line type="monotone" dataKey="tasks" stroke="#8b5cf6" />
+      </LineChart>
+
+      <PieChart width={250} height={200}>
+        <Pie data={pieData} dataKey="value" outerRadius={70}>
+          {pieData.map((_, i) => (
+            <Cell key={i} fill={COLORS[i]} />
+          ))}
+        </Pie>
+        <Tooltip />
+      </PieChart>
+
+      {/* LIST */}
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <Droppable droppableId="tasks">
+          {(provided) => (
+            <div ref={provided.innerRef} {...provided.droppableProps}>
+              <AnimatePresence>
+                {filteredTasks.map((task, index) => (
+                  <Draggable
+                    key={task.id}
+                    draggableId={task.id.toString()}
+                    index={index}
                   >
-
-                    <div
-                      onClick={() =>
-                        toggleTask(index)
-                      }
-                    >
-
-                      <span
-                        className={`priority ${task.priority}`}
+                    {(provided) => (
+                      <motion.div
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                        className={`task-item ${task.priority}`}
                       >
-                        {task.priority}
-                      </span>
+                        <span onClick={() => toggleTask(task.id)}>
+                          {task.text}
+                        </span>
 
-                      <span
-                        className={`category ${task.category}`}
-                      >
-
-                        {task.category === "study" && <FaBook />}
-                        {task.category === "work" && <FaBriefcase />}
-                        {task.category === "personal" && <FaUser />}
-                        {task.category === "health" && <FaHeartbeat />}
-
-                        {task.category}
-
-                      </span>
-
-                      {task.text}
-
-                      {task.date && (
-
-                        <p className="task-date">
-                          {task.date}
-                        </p>
-
-                      )}
-
-                    </div>
-
-                    <button
-                      className="delete-btn"
-                      onClick={() =>
-                        deleteTask(index)
-                      }
-                    >
-                      <FaTrash />
-                    </button>
-
-                  </li>
-
-                ))
-
-            )}
-
-          </ul>
-
-        </div>
-
-      </div>
-
+                        <button onClick={() => deleteTask(task.id)}>
+                          ❌
+                        </button>
+                      </motion.div>
+                    )}
+                  </Draggable>
+                ))}
+              </AnimatePresence>
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
+      </DragDropContext>
     </div>
-
   );
 }
 

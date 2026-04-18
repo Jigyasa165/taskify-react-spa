@@ -1,22 +1,73 @@
-.app {
-  max-width: 600px;
-  margin: auto;
-  text-align: center;
-}
-
-.header {
+/* ROOT LAYOUT */
+#root {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 40px;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  font-family: 'Segoe UI', sans-serif;
 }
 
-button {
-  margin: 5px;
-  padding: 8px 15px;
+/* MAIN APP CARD */
+.app-container {
+  width: 600px;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(18px);
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: white;
+}
+
+/* HEADER */
+h1 {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.header-box {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.subtitle {
+  color: #94a3b8;
+  font-size: 14px;
+}
+
+/* INPUT */
+.input-section {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 10px;
+  border: none;
+  outline: none;
+}
+
+/* BUTTON */
+.btn {
+  background: linear-gradient(135deg, #aa3bff, #764ba2);
+  color: rgb(174, 11, 219);
+  border: none;
+  border-radius: 10px;
+  padding: 10px 18px;
   cursor: pointer;
+  transition: 0.2s;
 }
 
+.btn:hover {
+  transform: scale(1.05);
+}
+
+/* TASK LIST */
 ul {
   list-style: none;
   padding: 0;
@@ -24,166 +75,67 @@ ul {
 
 li {
   margin: 10px 0;
-  padding: 10px;
-  border-radius: 8px;
-  background: white;
+  padding: 12px 15px;
+  border-radius: 10px;
+  background: rgb(200, 35, 35);
+  color: black;
   display: flex;
   justify-content: space-between;
+  align-items: center;
 }
 
+/* HOVER */
+.task-item:hover {
+  transform: translateY(-2px);
+}
+
+/* COMPLETED */
 .completed {
   text-decoration: line-through;
   opacity: 0.6;
 }
 
+/* DELETE */
+.delete-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+/* PROGRESS */
 .progress-bar {
   width: 100%;
-  height: 20px;
-  background: #ddd;
-  border-radius: 10px;
+  height: 10px;
+  background: #334155;
+  border-radius: 5px;
+  overflow: hidden;
 }
 
 .progress-fill {
   height: 100%;
-  background: green;
-  border-radius: 10px;
+  background: linear-gradient(to right, #6366f1, #d946ef);
+  transition: width 0.3s ease;
 }
 
-.dark-btn {
-  padding: 8px 15px;
+.analytics {
+  margin-top: 25px;
 }
 
-/* MAIN CONTAINER */
-
-#root {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding-top: 40px;
-}
-
-/* APP CARD */
-
-.app-container {
-
-  width: 600px;
-
-  background:
-
-    rgba(15,23,42,0.75);
-
-  backdrop-filter: blur(18px);
-
-  border-radius: 20px;
-
-  padding: 30px;
-
-  box-shadow:
-
-    0 25px 60px rgba(0,0,0,0.6);
-
-  border:
-
-    1px solid rgba(255,255,255,0.08);
-
-}
-
-/* HEADER */
-
-h1 {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-/* INPUT SECTION */
-
-.input-section {
-
-  display: flex;
-
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 12px;
-
-  justify-content: center;
-
-  margin-bottom: 20px;
-
 }
 
-/* BUTTONS */
-
-.btn {
-
-  background:
-    linear-gradient(
-      135deg,
-      #aa3bff,
-      #764ba2
-    );
-
-  color: white;
-
-  border: none;
-
-  border-radius: 10px;
-
-  padding: 10px 18px;
-
-  font-weight: 600;
-
-  cursor: pointer;
-
+.stat-box {
+  padding: 15px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 12px;
+  text-align: center;
   transition: 0.2s;
-
 }
 
-.btn:hover {
-
+.stat-box:hover {
   transform: scale(1.05);
-
-  box-shadow:
-    0 6px 15px rgba(0,0,0,0.2);
-
-}
-
-/* DELETE BUTTON */
-
-.delete-btn {
-  background: transparent;
-  border: none;
-  font-size: 18px;
-  cursor: pointer;
-}
-
-/* HEADER DESIGN */
-
-.header-box {
-  margin-bottom: 20px;
-}
-
-.subtitle {
-  color: #888;
-  font-size: 14px;
-}
-
-/* EMPTY STATE */
-
-.empty {
-  color: #888;
-  font-size: 16px;
-  margin-top: 20px;
-}
-
-.task-item {
-
-  transition: 0.2s;
-
-}
-
-.task-item:hover {
-
-  transform: translateY(-2px);
-
-  box-shadow:
-    0 8px 20px rgba(0,0,0,0.15);
-
+  box-shadow: 0 0 15px rgba(139,92,246,0.3);
 }
